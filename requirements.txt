@@ -1,0 +1,2 @@
+install django: pip install django==3.2
+install rest api: pip install djangorestframework==3.12.4

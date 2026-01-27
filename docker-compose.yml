@@ -3,10 +3,12 @@ version: '3.9'
 services:
   app:
     build: 
-      context: .
+      context: .            # folder with Dockerfile
+      args:                  # build arguments must be key: value
+        DEV: "true"
     ports:
-      - "8000:8000"
+      - "8000:8000"         # map container port 8000 to host port 8000
     volumes:
-      - ./app:/app
+      - ./app:/app          # mount local app folder into container
     command: >
-      sh -c "python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py runserver 0.0.0.0:8000"  # run Django server

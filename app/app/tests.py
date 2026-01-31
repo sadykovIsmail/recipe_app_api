@@ -8,7 +8,7 @@ from app import calc
 class CalcTests(SimpleTestCase):
     """Test the calc module."""
     def test_add_number(self):
-        res = calc.add(5,6)
+        res = calc.add(5, 6)
 
         self.assertEqual(res, 11)
 
@@ -18,5 +18,3 @@ class CalcTests(SimpleTestCase):
 
         self.assertEqual(res, 5)
 
-
-    

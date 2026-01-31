@@ -1,46 +1,32 @@
 ---
-# Workflow file for GitHub Actions
-
 name: Checks
-# Name of the workflow as it appears in the GitHub Actions UI
+# Workflow name visible in GitHub Actions UI
 
 on: [push]
-# Run this workflow every time code is pushed to the repo
+# Trigger: run workflow on every push
 
 jobs:
   test-lint:
-    # Unique ID for the job (used internally)
-
     name: Test and Lint
-    # Friendly name for the job visible in the Actions dashboard
-
-    runs-on: ubuntu-20.04
-    # The job runs on a virtual machine with Ubuntu 20.04 pre-installed
+    runs-on: ubuntu-24.04
+    # Updated Ubuntu runner (old 20.04 removed)
 
     steps:
-      # Steps to execute sequentially in this job
-
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        # Logs in to Docker Hub
-        # Using GitHub Secrets to avoid exposing credentials
-        # Necessary to pull Docker images without hitting rate limits
+        # Logs into Docker Hub to avoid rate limits
 
       - name: Checkout
-        uses: actions/checkout@v2
-        # Copies your repository into the VM
-        # Needed so tests and linting can access your code
+        uses: actions/checkout@v4
+        # Checks out repo so workflow can access code
 
       - name: Test
-        run: docker-compose run --rm app sh -c "python manage.py test"
+        run: docker compose run --rm app sh -c "python manage.py test"
         # Runs Django unit tests inside Docker container
-        # --rm removes the container after it runs
-        # Ensures that all code passes tests before merge
 
       - name: Lint
-        run: docker-compose run --rm app sh -c "flake8"
-        # Runs linter to check code formatting and potential errors
-        # Helps maintain consistent code style and catch mistakes
+        run: docker compose run --rm app sh -c "flake8"
+        # Runs linter to check code style

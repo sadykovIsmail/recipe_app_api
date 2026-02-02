@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',       # Session management
     'django.contrib.messages',       # Flash messages
     'django.contrib.staticfiles',    # Static file handling
+    'core',
 ]
 
 

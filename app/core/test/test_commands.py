@@ -35,7 +35,6 @@ class CommandTests(SimpleTestCase):
         """
         Test waiting for database when database is ready immediately.
         """
-
         # Simulate the database being ready on first check
         patched_check.return_value = True
 
@@ -72,4 +71,3 @@ class CommandTests(SimpleTestCase):
 
         # Verify the check was called with correct arguments
         patched_check.assert_called_with(databases=['default'])
-        # ⚠️ NOTE: original code had "patch_check" typo → should be patched_check

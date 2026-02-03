@@ -26,7 +26,7 @@ from django.test import SimpleTestCase
 
 # Patch the `check` method of our wait_for_db command
 # This replaces Command.check() with a mock object
-@patch('core.managemend.commands.wait_for_db.Command.check')
+@patch("core.management.commands.wait_for_db.Command.check")
 # ⚠️ NOTE: "managemend" is a typo → should be "management"
 class CommandTests(SimpleTestCase):
     """Test commands."""
@@ -44,7 +44,7 @@ class CommandTests(SimpleTestCase):
 
         # Assert that the check method was called once
         # with the default database
-        patched_check.assert_called_once_with(database=['default'])
+        patched_check.assert_called_once_with(databases=['default'])
 
     # Patch time.sleep so tests don't actually wait
     @patch('time.sleep')
@@ -71,5 +71,5 @@ class CommandTests(SimpleTestCase):
         self.assertEqual(patched_check.call_count, 6)
 
         # Verify the check was called with correct arguments
-        patched_check.assert_called_with(database=['default'])
+        patched_check.assert_called_with(databases=['default'])
         # ⚠️ NOTE: original code had "patch_check" typo → should be patched_check

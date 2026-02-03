@@ -30,7 +30,7 @@ class UserManager(BaseUserManager):
         """
 
         # Create a user instance using the associated User model
-        user = self.model(email=email, **extra_field)
+        user = self.model(email=self.normalize_email(email), **extra_field)
 
         # Hash and set the user's password securely
         user.set_password(password)

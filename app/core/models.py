@@ -28,6 +28,8 @@ class UserManager(BaseUserManager):
         password: raw password (will be hashed)
         extra_field: additional fields like name
         """
+        if not email:
+            raise ValueError('User must have an email address')
 
         # Create a user instance using the associated User model
         user = self.model(email=self.normalize_email(email), **extra_field)

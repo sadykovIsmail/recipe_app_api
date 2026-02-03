@@ -163,3 +163,5 @@ STATIC_URL = '/static/'  # URL path for static files
 # --------------------------------------------------
 # Default ID field for models
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTH_USER_MODEL = 'core.User'

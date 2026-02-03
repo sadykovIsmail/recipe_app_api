@@ -12,9 +12,10 @@ services:
       - ./app:/app          # Sync local ./app folder with /app inside container
                              # Changes on your PC instantly reflect in container
     command: >
-      sh -c "python manage.py runserver 0.0.0.0:8000"
-                             # Start Django dev server
-                             # 0.0.0.0 allows access from outside the container
+      sh -c " python manage.py wait_for_db &&
+              pythono manage.py migrate &&
+              python manage.py runserver 0.0.0.0:8000"
+
     environment:
       - DB_HOST=db          # Hostname of database (service name "db")
       - DB_NAME=devbd       # Database name

@@ -24,7 +24,7 @@ jobs:
         # Checks out repo so workflow can access code
 
       - name: Test
-        run: docker compose run --rm app sh -c "python manage.py test"
+        run: docker compose run --rm app sh -c "pythono manage.py wait_for_db && python manage.py test"
         # Runs Django unit tests inside Docker container
 
       - name: Lint

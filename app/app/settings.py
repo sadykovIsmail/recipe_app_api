@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',       # Flash messages
     'django.contrib.staticfiles',    # Static file handling
     'core',
+    'rest_framework',
+    'drf_spectacular'
 ]
 
 
@@ -165,3 +167,9 @@ STATIC_URL = '/static/'  # URL path for static files
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'core.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
+}
+

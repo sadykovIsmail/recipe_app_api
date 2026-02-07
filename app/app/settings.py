@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',    # Static file handling
     'core',
     'rest_framework',
-    'drf_spectacular'
+    'drf_spectacular',
+    'user',
 ]
 
 

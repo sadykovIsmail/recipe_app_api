@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from rest_framework import status
-from rest_framework import APIClient
+from rest_framework.test import APIClient
 
 from core.models import Recipe
 
@@ -14,7 +14,7 @@ from recipe.serializers import RecipeSerializer
 
 RECIPES_URL = reverse('recipe:recipe-list')
 
-def create_recipe(self, **params):
+def create_recipe(user, **params):
     """Create and return a sample recipe"""
     defaults = {
         'title': 'Sample recipe title',

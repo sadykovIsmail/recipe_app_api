@@ -48,6 +48,22 @@ class RecipeSerializer(serializers.ModelSerializer):
         # id is generated automatically
         read_only_fields = ['id']
 
+    def _get_or_create_tags(self, tags, recipe):
+        """Handle getting or creating tags as needed."""
+        # Get the authenticated user from the request context
+        auth_user = self.context['request'].user
+
+        # Loop through provided tags
+        for tag in tags:
+            # Get existing tag or create a new one for this user
+            tag_obj, created = Tag.objects.get_or_create(
+                user=auth_user,
+                **tag,
+            )
+            # Attach tag to recipe (ManyToMany relationship)
+            recipe.tags.add(tag_obj)
+
+
     def create(self, validated_data):
         """
         Custom create method to handle nested tag creation.
@@ -62,23 +78,26 @@ class RecipeSerializer(serializers.ModelSerializer):
 
         # Create the recipe using remaining fields
         recipe = Recipe.objects.create(**validated_data)
+        self._get_or_create_tags(tags, recipe)
 
-        # Get the authenticated user from the request context
-        auth_user = self.context['request'].user
 
-        # Loop through provided tags
-        for tag in tags:
-            # Get existing tag or create a new one for this user
-            tag_obj, created = Tag.objects.get_or_create(
-                user=auth_user,
-                **tag,
-            )
-            # Attach tag to recipe (ManyToMany relationship)
-            recipe.tags.add(tag_obj)
 
         # Return the created recipe instance
         return recipe
 
+    def update(self, instance, validate_data):
+        """"Update recipe."""
+        tags = validate_data.pop('tags', None)
+
+        if tags is not None:
+            instance.tags.clear()
+            self._get_or_create_tags(tags, instance)
+
+        for attr, value in validate_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 class RecipeDetailSerializer(RecipeSerializer):
     """

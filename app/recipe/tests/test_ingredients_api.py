@@ -75,4 +75,4 @@ class PrivateIngredientApiTests(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         ingredients = Ingredient.objects.filter(name=self.user)
-        self.assertEqual(ingredients.exist())
+        self.assertFalse(ingredients.exists())

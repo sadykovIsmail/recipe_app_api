@@ -48,11 +48,15 @@ class RecipeSerializer(serializers.ModelSerializer):
     # Nested serializer:
     # Allows tags to be sent as a list of objects when creating a recipe
     tags = TagSerializer(many=True, required=False)
+    ingredients = IngredientSerializer(many=True, required=False)
 
     class Meta:
         model = Recipe
         # Fields exposed in API responses and accepted in requests
-        fields = ['id', 'title', 'time_minutes', 'price', 'link', 'tags']
+        fields = [
+            'id', 'title', 'time_minutes', 'price', 'link', 'tags',
+            'ingredients',
+            ]
         # id is generated automatically
         read_only_fields = ['id']
 
@@ -71,6 +75,16 @@ class RecipeSerializer(serializers.ModelSerializer):
             # Attach tag to recipe (ManyToMany relationship)
             recipe.tags.add(tag_obj)
 
+    def _get_or_create_ingredients(self, ingredients, recipe):
+        """Handle getting or creating ingredients as needed."""
+        auth_user = self.context['request'].user
+        for ingredient in ingredients:
+            ingredient_obj, create = Ingredient.objects.get_or_create(
+                user=auth_user,
+                **ingredient,
+            )
+            recipe.ingredients.add(ingredient_obj)
+
 
     def create(self, validated_data):
         """
@@ -83,10 +97,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         # Remove tags from validated_data (ManyToMany fields
         # must be handled separately)
         tags = validated_data.pop('tags', [])
-
+        ingredients = validated_data.pop('ingredients', [])
         # Create the recipe using remaining fields
         recipe = Recipe.objects.create(**validated_data)
         self._get_or_create_tags(tags, recipe)
+        self._get_or_create_ingredients(ingredients, recipe)
 
 
 

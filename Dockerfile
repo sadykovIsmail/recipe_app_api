@@ -6,7 +6,7 @@ LABEL maintainer="recipe-app"
 
 # Prevent Python from buffering stdout/stderr
 # (so logs appear immediately in Docker)
-ENV PYTHONUNBUFFERED=1                
+ENV PYTHONUNBUFFERED=1
 
 # -------------------------------
 # Copy project files into image
@@ -26,27 +26,27 @@ COPY ./app /app
 # -------------------------------
 
 # Set working directory inside container
-WORKDIR /app    
+WORKDIR /app
 
 # Expose Django development server port
-EXPOSE 8000                           
+EXPOSE 8000
 
 # Build-time argument (used to install dev packages)
-ARG DEV=false                          
+ARG DEV=false
 
 # -------------------------------
 # Install dependencies
 # -------------------------------
  # Create virtual environment at /py"""
-RUN python -m venv /py && \            
+RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
 
     # Install PostgreSQL client (needed at runtime)
-    apk add --update --no-cache postgresql-client && \
+    apk add --update --no-cache postgresql-client jpeg-dev && \
 
     # Install temporary build dependencies (needed only to build psycopg2)
     apk add --update --no-cache --virtual .tmp-build-deps \
-        build-base postgresql-dev musl-dev && \
+        build-base postgresql-dev musl-dev zlib zlib-dev && \
 
     # Install production Python dependencies
     /py/bin/pip install -r /tmp/requirements.txt && \
@@ -67,11 +67,11 @@ RUN python -m venv /py && \
 
 # Add virtual environment binaries to PATH
 # (so "python" and "pip" work normally)
-ENV PATH="/py/bin:$PATH"       
+ENV PATH="/py/bin:$PATH"
 
 # -------------------------------
 # Security
 # -------------------------------
 
 # Run container as non-root user
-USER django-user                       
+USER django-user

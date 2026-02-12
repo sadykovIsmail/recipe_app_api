@@ -352,3 +352,17 @@ class PrivateRecipeApiTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertIn(ingredient2, recipe.Ingredients.all())
         self.assertNotIn(ingredient1, recipe.Ingredients.all())
+
+
+    def test_clear_recipe_ingredients(self):
+        """Test clearing a recipe ingredients"""
+        ingredient = Ingredient.objects.create(user=self.user, name='Garlic')
+        recipe = create_recipe(user=self.user)
+        recipe.Ingredients.add(ingredient)
+
+        payload = {'ingredients': []}
+        url = detail_url(recipe.id)
+        res = self.client.patch(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(recipe.Ingredients.count(), 0)

@@ -1,2 +1,13 @@
-# Dev packages (for optional dev environment)
+# Development & CI packages
+
+# Linting
 flake8>=3.9.2,<3.10
+
+# Test coverage
+coverage>=6.4,<7.0
+
+# Security scanning
+bandit>=1.7.4,<2.0
+
+# Dependency vulnerability check
+safety>=2.3.0,<3.0

@@ -1,42 +1,41 @@
-version: '3.9'              # Docker Compose file format version
+version: '3.9'
 
 services:
-  app:                      # Name of the service (Django app container)
+  app:
     build:
-      context: .            # Use current directory as build context
-      args:                 # Build-time arguments for Dockerfile
-        DEV: "true"         # Custom arg (usually used to enable dev mode)
+      context: .
+      args:
+        DEV: "true"
     ports:
-      - "8000:8000"         # Map host port 8000 → container port 8000
+      - "8000:8000"
     volumes:
-      - ./app:/app          # Sync local ./app folder with /app inside container
-                             # Changes on your PC instantly reflect in container
+      - ./app:/app
+      - dev-static-data:/vol/web
     command: >
-      sh -c " python manage.py wait_for_db &&
-              python manage.py migrate &&
-              python manage.py runserver 0.0.0.0:8000"
-
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
     environment:
-      - DB_HOST=db          # Hostname of database (service name "db")
-      - DB_NAME=devbd       # Database name
-      - DB_USER=devuser     # Database user
-      - DB_PASS=changeme    # Database password
+      - SECRET_KEY=django-insecure-dev-only-change-in-prod-bt%rxmfkspmft7meim7z=du$$0j%2zac00jtspia38$$80cd!0yn
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - DB_HOST=db
+      - DB_NAME=devdb
+      - DB_USER=devuser
+      - DB_PASS=changeme
+      - CORS_ALLOW_ALL_ORIGINS=True
     depends_on:
-      - db                  # Start db container before app container
+      - db
 
-
-  db:                       # PostgreSQL database service
+  db:
     image: postgres:13-alpine
-                             # Lightweight PostgreSQL 13 image
     volumes:
       - dev-db-data:/var/lib/postgresql/data
-                             # Persist database data (won’t be deleted on restart)
     environment:
-      - POSTGRES_DB=devbd   # Initial database name
+      - POSTGRES_DB=devdb
       - POSTGRES_USER=devuser
-                             # Database username
       - POSTGRES_PASSWORD=changeme
-                             # Database password
 
 volumes:
-  dev-db-data:              # Named volume for PostgreSQL persistent storage
+  dev-db-data:
+  dev-static-data:

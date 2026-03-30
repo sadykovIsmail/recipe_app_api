@@ -1,6 +1,30 @@
-# Base packages
-Django==3.2
-djangorestframework==3.12.4
+# Core framework
+Django>=3.2,<4.0
+djangorestframework>=3.12.4,<3.13
+
+# Database
 psycopg2>=2.8.6,<2.9
+
+# API documentation
 drf-spectacular>=0.15.1,<0.16
+
+# Image processing
 Pillow>=8.2.0,<8.3.0
+
+# Environment configuration (12-factor app)
+django-environ>=0.8.1,<0.9
+
+# Production WSGI server
+gunicorn>=20.1.0,<21.0
+
+# Static file serving in production
+whitenoise>=5.3.0,<6.0
+
+# CORS headers for frontend communication
+django-cors-headers>=3.10.0,<4.0
+
+# JWT authentication
+djangorestframework-simplejwt>=4.8.0,<5.0
+
+# Filtering and search
+django-filter>=21.1,<22.0

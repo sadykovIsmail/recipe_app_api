@@ -86,3 +86,11 @@ class ModelTests(TestCase):
         )
 
         self.assertEqual(str(ingredient), ingredient.name)
+
+    def test_recipe_image_file_path_uses_uuid(self):
+        """Image upload paths use a UUID so filenames never clash."""
+        path1 = models.recipe_image_file_path(None, 'photo.jpg')
+        path2 = models.recipe_image_file_path(None, 'photo.jpg')
+        self.assertNotEqual(path1, path2)
+        self.assertTrue(path1.startswith('uploads/recipe/'))
+        self.assertTrue(path1.endswith('.jpg'))

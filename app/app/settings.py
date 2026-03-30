@@ -66,6 +66,9 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
     'django_filters',
+    # Celery result/beat backends
+    'django_celery_results',
+    'django_celery_beat',
     # Local
     'core',
     'user',
@@ -281,6 +284,59 @@ LOGGING = {
             'level': 'WARNING',   # set to DEBUG locally to see queries
             'propagate': False,
         },
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Production security headers (only active when DEBUG=False)
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Redis cache
+# ---------------------------------------------------------------------------
+
+REDIS_URL = env('REDIS_URL', default='redis://redis:6379/0')
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'SOCKET_CONNECT_TIMEOUT': 5,
+            'SOCKET_TIMEOUT': 5,
+            'IGNORE_EXCEPTIONS': True,   # degrade gracefully if Redis is down
+        },
+        'KEY_PREFIX': 'recipe_app',
+        'TIMEOUT': 300,                  # default TTL: 5 min
+    }
+}
+
+# Use Redis for Django sessions too
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
+# ---------------------------------------------------------------------------
+# Celery
+# ---------------------------------------------------------------------------
+
+CELERY_BROKER_URL            = env('CELERY_BROKER_URL', default=REDIS_URL)
+CELERY_RESULT_BACKEND        = 'django-db'       # stored in django_celery_results
+CELERY_CACHE_BACKEND         = 'default'
+CELERY_ACCEPT_CONTENT        = ['json']
+CELERY_TASK_SERIALIZER       = 'json'
+CELERY_RESULT_SERIALIZER     = 'json'
+CELERY_TIMEZONE              = 'UTC'
+CELERY_TASK_TRACK_STARTED    = True
+CELERY_BEAT_SCHEDULER        = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Periodic tasks
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    'recompute-trending-every-5-min': {
+        'task': 'recipe.tasks.recompute_trending',
+        'schedule': crontab(minute='*/5'),
     },
 }
 

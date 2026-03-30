@@ -17,10 +17,10 @@ django-environ>=0.8.1,<0.9
 # Production WSGI server
 gunicorn>=20.1.0,<21.0
 
-# Static file serving in production
+# Static file serving
 whitenoise>=5.3.0,<6.0
 
-# CORS headers for frontend communication
+# CORS headers
 django-cors-headers>=3.10.0,<4.0
 
 # JWT authentication
@@ -28,3 +28,14 @@ djangorestframework-simplejwt>=4.8.0,<5.0
 
 # Filtering and search
 django-filter>=21.1,<22.0
+
+# ── Performance ───────────────────────────────────────────────────────────────
+
+# Redis client + Django cache backend
+redis>=4.3.0,<5.0
+django-redis>=5.2.0,<6.0
+
+# Async task queue (image resizing, notifications, trending recompute)
+celery>=5.2.7,<6.0
+django-celery-beat>=2.4.0,<3.0    # periodic tasks stored in DB
+django-celery-results>=2.4.0,<3.0 # task results stored in DB

@@ -1,32 +1,63 @@
 version: '3.9'
 
+x-app-common: &app-common
+  build:
+    context: .
+    args:
+      DEV: "true"
+  volumes:
+    - ./app:/app
+    - dev-static-data:/vol/web
+  environment:
+    - SECRET_KEY=django-insecure-dev-only-bt%rxmfkspmft7meim7z=du$$0j%2zac00jtspia38$$80cd!0yn
+    - DEBUG=True
+    - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+    - DB_HOST=db
+    - DB_NAME=devdb
+    - DB_USER=devuser
+    - DB_PASS=changeme
+    - CORS_ALLOW_ALL_ORIGINS=True
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+  depends_on:
+    - db
+    - redis
+
 services:
+  # ── Django API ────────────────────────────────────────────────────────────
   app:
-    build:
-      context: .
-      args:
-        DEV: "true"
+    <<: *app-common
     ports:
       - "8000:8000"
-    volumes:
-      - ./app:/app
-      - dev-static-data:/vol/web
     command: >
       sh -c "python manage.py wait_for_db &&
              python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
-    environment:
-      - SECRET_KEY=django-insecure-dev-only-change-in-prod-bt%rxmfkspmft7meim7z=du$$0j%2zac00jtspia38$$80cd!0yn
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
-      - DB_HOST=db
-      - DB_NAME=devdb
-      - DB_USER=devuser
-      - DB_PASS=changeme
-      - CORS_ALLOW_ALL_ORIGINS=True
-    depends_on:
-      - db
 
+  # ── Celery worker (async tasks: image resize, notifications) ─────────────
+  celery:
+    <<: *app-common
+    command: >
+      sh -c "python manage.py wait_for_db &&
+             celery -A app worker --loglevel=info --concurrency=2"
+
+  # ── Celery beat (periodic tasks: trending recompute) ─────────────────────
+  celery-beat:
+    <<: *app-common
+    command: >
+      sh -c "python manage.py wait_for_db &&
+             celery -A app beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev-redis-data:/data
+    command: redis-server --appendonly yes
+
+  # ── Next.js frontend ─────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -35,12 +66,13 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules    # anonymous volume so host node_modules don't override container
+      - /app/node_modules
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - app
 
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
   db:
     image: postgres:13-alpine
     volumes:
@@ -53,3 +85,4 @@ services:
 volumes:
   dev-db-data:
   dev-static-data:
+  dev-redis-data:

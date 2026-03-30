@@ -1,51 +1,63 @@
-"""
-Serializers for the recipe API.
-
-Serializers convert:
-- Django model instances → JSON (responses)
-- JSON → validated Python objects (requests)
-"""
+"""Serializers for the recipe API."""
 from rest_framework import serializers
 
-from core.models import Recipe, Tag, Ingredient
+from core.models import Recipe, Tag, Ingredient, RecipeLike, RecipeComment
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class IngredientSerializer(serializers.ModelSerializer):
-    """Serializer for ingredients."""
-
     class Meta:
-        model = Ingredient
+        model  = Ingredient
         fields = ['id', 'name']
         read_only_fields = ['id']
 
 
 class TagSerializer(serializers.ModelSerializer):
-    """Serializer for tags."""
-
     class Meta:
-        model = Tag
+        model  = Tag
         fields = ['id', 'name']
         read_only_fields = ['id']
 
 
-class RecipeSerializer(serializers.ModelSerializer):
-    """
-    Serializer for listing/creating recipes.
-    Tags and ingredients are accepted as nested objects and
-    handled via get-or-create so the same name is never duplicated.
-    """
-    tags = TagSerializer(many=True, required=False)
-    ingredients = IngredientSerializer(many=True, required=False)
+class RecipeAuthorSerializer(serializers.ModelSerializer):
+    """Compact author info embedded in recipe responses."""
+    avatar = serializers.ImageField(source='profile.avatar', read_only=True, default=None)
 
     class Meta:
-        model = Recipe
-        fields = [
-            'id', 'title', 'time_minutes', 'price',
-            'link', 'tags', 'ingredients',
-        ]
-        read_only_fields = ['id']
+        model  = User
+        fields = ['id', 'name', 'avatar']
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+
+class RecipeSerializer(serializers.ModelSerializer):
+    """List/create serializer — no description, annotated social counts."""
+    tags        = TagSerializer(many=True, required=False)
+    ingredients = IngredientSerializer(many=True, required=False)
+    author      = RecipeAuthorSerializer(source='user', read_only=True)
+
+    # Populated via queryset annotation
+    likes_count    = serializers.IntegerField(read_only=True, default=0)
+    comments_count = serializers.IntegerField(read_only=True, default=0)
+    is_liked       = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Recipe
+        fields = [
+            'id', 'title', 'time_minutes', 'price', 'link',
+            'image', 'tags', 'ingredients', 'created_at',
+            'author', 'likes_count', 'comments_count', 'is_liked',
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_is_liked(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        # Use prefetched data if available, otherwise query
+        if hasattr(obj, '_is_liked'):
+            return obj._is_liked
+        return RecipeLike.objects.filter(user=request.user, recipe=obj).exists()
 
     def _get_or_create_tags(self, tags, recipe):
         auth_user = self.context['request'].user
@@ -59,10 +71,8 @@ class RecipeSerializer(serializers.ModelSerializer):
             ing_obj, _ = Ingredient.objects.get_or_create(user=auth_user, **ingredient)
             recipe.ingredients.add(ing_obj)
 
-    # ── Create / update ───────────────────────────────────────────────────────
-
     def create(self, validated_data):
-        tags = validated_data.pop('tags', [])
+        tags        = validated_data.pop('tags', [])
         ingredients = validated_data.pop('ingredients', [])
         recipe = Recipe.objects.create(**validated_data)
         self._get_or_create_tags(tags, recipe)
@@ -70,40 +80,43 @@ class RecipeSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        tags = validated_data.pop('tags', None)
+        tags        = validated_data.pop('tags', None)
         ingredients = validated_data.pop('ingredients', None)
-
         if tags is not None:
             instance.tags.clear()
             self._get_or_create_tags(tags, instance)
-
         if ingredients is not None:
             instance.ingredients.clear()
             self._get_or_create_ingredients(ingredients, instance)
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
         instance.save()
         return instance
 
 
 class RecipeDetailSerializer(RecipeSerializer):
-    """Serializer for recipe detail view (adds description + image)."""
+    """Detail serializer — adds description field."""
 
     class Meta(RecipeSerializer.Meta):
-        fields = RecipeSerializer.Meta.fields + ['description', 'image']
+        fields = RecipeSerializer.Meta.fields + ['description']
 
 
 class RecipeImageSerializer(serializers.ModelSerializer):
-    """
-    Serializer exclusively for uploading recipe images.
-    Kept separate so the multipart/form-data upload endpoint
-    does not conflict with the JSON recipe endpoints.
-    """
-
     class Meta:
-        model = Recipe
+        model  = Recipe
         fields = ['id', 'image']
         read_only_fields = ['id']
         extra_kwargs = {'image': {'required': True}}
+
+
+# ── Comments ──────────────────────────────────────────────────────────────────
+
+class RecipeCommentSerializer(serializers.ModelSerializer):
+    author_name   = serializers.CharField(source='user.name',           read_only=True)
+    author_avatar = serializers.ImageField(source='user.profile.avatar', read_only=True, default=None)
+    author_id     = serializers.IntegerField(source='user.id',          read_only=True)
+
+    class Meta:
+        model  = RecipeComment
+        fields = ['id', 'text', 'created_at', 'updated_at', 'author_id', 'author_name', 'author_avatar']
+        read_only_fields = ['id', 'created_at', 'updated_at']

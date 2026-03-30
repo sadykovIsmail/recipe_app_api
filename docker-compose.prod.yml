@@ -65,6 +65,16 @@ services:
     networks:
       - backend
 
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL:-https://api.example.com}
+    restart: unless-stopped
+    networks:
+      - backend
+
   proxy:
     image: nginx:1.23-alpine
     restart: unless-stopped

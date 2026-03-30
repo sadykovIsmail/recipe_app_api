@@ -1,171 +1,115 @@
-"""
-Tests for the user API
-"""
-
-# Base class for Django tests.
-# Django creates a temporary test database automatically.
+"""Tests for the user API."""
 from django.test import TestCase
-
-# Returns the active User model (default or custom).
-# Always use this instead of importing User directly.
 from django.contrib.auth import get_user_model
-
-# Converts a URL name into the actual URL path.
-# Example: 'user:create' -> '/api/user/create/'
 from django.urls import reverse
 
-# REST framework client for making HTTP requests in tests.
 from rest_framework.test import APIClient
-
-# HTTP status codes (200, 201, 400, etc.)
 from rest_framework import status
 
 
-# URL for creating a user (resolved by name from urls.py)
 CREATE_USER_URL = reverse('user:create')
-TOKEN_URL = reverse('user:token')
-ME_URL = reverse('user:me')
+TOKEN_URL       = reverse('user:token')
+ME_URL          = reverse('user:me')
+JWT_LOGIN_URL   = reverse('user:jwt-login')
+JWT_REFRESH_URL = reverse('user:jwt-refresh')
+LOGOUT_URL      = reverse('user:logout')
 
 
 def create_user(**params):
-    """
-    Helper function to create and return a new user.
-    Used only inside tests to prepare test data.
-    """
     return get_user_model().objects.create_user(**params)
 
 
+# ── Public endpoints ──────────────────────────────────────────────────────────
+
 class PublicUserApiTests(TestCase):
-    """
-    Tests for public (unauthenticated) user API endpoints.
-    """
+    """Tests for unauthenticated user API endpoints."""
 
     def setUp(self):
-        """
-        Runs before each test.
-        Creates a new API client instance.
-        """
         self.client = APIClient()
 
-    def test_create_user_success(self):
-        """
-        Test that creating a user with valid data succeeds.
-        """
-        payload = {
-            'email': 'test@example.com',
-            'password': 'testpass123',
-            'name': 'Test Name'
-        }
+    # -- User creation --------------------------------------------------------
 
-        # Send POST request to create user endpoint
+    def test_create_user_success(self):
+        payload = {'email': 'test@example.com', 'password': 'testpass123', 'name': 'Test Name'}
         res = self.client.post(CREATE_USER_URL, payload)
 
-        # Check that the response status is 201 CREATED
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-
-        # Retrieve the user from the database
         user = get_user_model().objects.get(email=payload['email'])
-
-        # Verify the password was hashed correctly
         self.assertTrue(user.check_password(payload['password']))
-
-        # Ensure password is NOT returned in the API response
         self.assertNotIn('password', res.data)
 
     def test_user_with_email_exists_error(self):
-        """
-        Test that creating a user with an existing email fails.
-        """
-        payload = {
-            'email': 'test@example.com',
-            'password': 'testpass123',
-            'name': 'Test Name'
-        }
-
-        # Create a user with the same email first
+        payload = {'email': 'test@example.com', 'password': 'testpass123', 'name': 'Test Name'}
         create_user(**payload)
-
-        # Try to create another user with the same email
         res = self.client.post(CREATE_USER_URL, payload)
-
-        # Expect a 400 BAD REQUEST error
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_password_too_short_error(self):
-        """
-        Test that a password shorter than 5 characters is rejected.
-        """
-        payload = {
-            'email': 'test@example.com',
-            'password': 'pw',  # too short
-            'name': 'Test name',
-        }
-
-        # Send POST request with invalid password
+        payload = {'email': 'test@example.com', 'password': 'pw', 'name': 'Test name'}
         res = self.client.post(CREATE_USER_URL, payload)
-
-        # Expect validation error
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(get_user_model().objects.filter(email=payload['email']).exists())
 
-        # Check that the user was NOT created in the database
-        user_exists = get_user_model().objects.filter(
-            email=payload['email']
-        ).exists()
-
-        self.assertFalse(user_exists)
+    # -- Legacy DRF token -----------------------------------------------------
 
     def test_create_token_for_user(self):
-        '""Test generatoes token for valid credentials'
-
-        user_details = {
-            'name': 'Test Name',
-            'email': 'test@example.com',
-            'password': 'test-user-password0123',
-        }
+        user_details = {'name': 'Test Name', 'email': 'test@example.com', 'password': 'test-user-password0123'}
         create_user(**user_details)
-
-        payload = {
-            'email': user_details['email'],
-            'password': user_details['password'],
-
-        }
-        res = self.client.post(TOKEN_URL, payload)
-
+        res = self.client.post(TOKEN_URL, {'email': user_details['email'], 'password': user_details['password']})
         self.assertIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
-    def test_create_token_bad_credentianls(self):
-        """Test return error if credentials invalid"""
-
+    def test_create_token_bad_credentials(self):
         create_user(email='test@example.com', password='goodpass')
-
-        payload = {'email': 'test@example.com', 'password': 'badpass'}
-        res = self.client.post(TOKEN_URL, payload)
-
+        res = self.client.post(TOKEN_URL, {'email': 'test@example.com', 'password': 'badpass'})
         self.assertNotIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-
 
     def test_create_token_blank_password(self):
-        """Test posting a blank password"""
-        payload = {'email':'test@example.com', 'password': ''}
-        res = self.client.post(TOKEN_URL, payload)
-
+        res = self.client.post(TOKEN_URL, {'email': 'test@example.com', 'password': ''})
         self.assertNotIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_retrieve_user_unauthorized(self):
-        """Test authorized is required for users."""
-        res = self.client.get(ME_URL)
+    # -- JWT ------------------------------------------------------------------
 
+    def test_jwt_login_returns_access_and_refresh(self):
+        """JWT login returns both access and refresh tokens."""
+        create_user(email='jwt@example.com', password='testpass123', name='JWT User')
+        res = self.client.post(JWT_LOGIN_URL, {'email': 'jwt@example.com', 'password': 'testpass123'})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('access', res.data)
+        self.assertIn('refresh', res.data)
+
+    def test_jwt_login_bad_credentials(self):
+        """JWT login with wrong password returns 401."""
+        create_user(email='jwt@example.com', password='correct', name='JWT User')
+        res = self.client.post(JWT_LOGIN_URL, {'email': 'jwt@example.com', 'password': 'wrong'})
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_jwt_refresh_returns_new_access_token(self):
+        """Valid refresh token returns a new access token."""
+        create_user(email='jwt@example.com', password='testpass123', name='JWT User')
+        login_res = self.client.post(JWT_LOGIN_URL, {'email': 'jwt@example.com', 'password': 'testpass123'})
+        refresh_token = login_res.data['refresh']
+
+        res = self.client.post(JWT_REFRESH_URL, {'refresh': refresh_token})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('access', res.data)
+
+    # -- Unauthenticated access -----------------------------------------------
+
+    def test_retrieve_user_unauthorized(self):
+        res = self.client.get(ME_URL)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+# ── Private endpoints ─────────────────────────────────────────────────────────
+
 class PrivateUserApiTests(TestCase):
-    """Test API requests that require authontication"""
+    """Tests for authenticated user API endpoints."""
 
     def setUp(self):
-        self.user = create_user (
+        self.user = create_user(
             email='test@example.com',
             password='testpass123',
             name='Test Name',
@@ -174,28 +118,44 @@ class PrivateUserApiTests(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_retrieve_profile_success(self):
-        """Test retrieving profile for logged in user."""
         res = self.client.get(ME_URL)
-
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data, {
-            'name': self.user.name,
-            'email': self.user.email,
-        })
+        self.assertEqual(res.data, {'name': self.user.name, 'email': self.user.email})
 
     def test_post_me_not_allowed(self):
-        """Test POST is not allowed for the me endpoint."""
         res = self.client.post(ME_URL, {})
-
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_update_user_profile(self):
-        """Test updating the user profile for the authenticatied"""
-        payload = {'name': 'Updated name', 'password':'newpassword123'}
-
+        payload = {'name': 'Updated name', 'password': 'newpassword123'}
         res = self.client.patch(ME_URL, payload)
-
         self.user.refresh_from_db()
         self.assertEqual(self.user.name, payload['name'])
         self.assertTrue(self.user.check_password(payload['password']))
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_logout_blacklists_refresh_token(self):
+        """Logout endpoint blacklists the refresh token."""
+        # Get tokens for this user
+        self.client.force_authenticate(user=None)   # use real JWT for this test
+        login_res = self.client.post(
+            JWT_LOGIN_URL,
+            {'email': 'test@example.com', 'password': 'testpass123'},
+        )
+        self.assertEqual(login_res.status_code, status.HTTP_200_OK)
+        access  = login_res.data['access']
+        refresh = login_res.data['refresh']
+
+        # Logout
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+        res = self.client.post(LOGOUT_URL, {'refresh': refresh})
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Attempt to use the blacklisted refresh token
+        res2 = self.client.post(JWT_REFRESH_URL, {'refresh': refresh})
+        self.assertEqual(res2.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_missing_refresh_token_returns_400(self):
+        """Logout with no refresh token returns 400."""
+        res = self.client.post(LOGOUT_URL, {})
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)

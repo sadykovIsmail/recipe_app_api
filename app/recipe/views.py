@@ -33,7 +33,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 
     def perform_create(self, serializer):
-        """create a new recupe."""
+        """Create a new recipe."""
         serializer.save(user=self.request.user)
 
 class BaseRecipeAttrViewSet(mixins.DestroyModelMixin,
@@ -51,7 +51,7 @@ class BaseRecipeAttrViewSet(mixins.DestroyModelMixin,
 
 
 class TagViewSet(BaseRecipeAttrViewSet):
-    """Mange tags in the database"""
+    """Manage tags in the database."""
     serializer_class = serializers.TagSerializer
     queryset = Tag.objects.all()
 

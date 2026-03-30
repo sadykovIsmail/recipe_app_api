@@ -12,7 +12,7 @@ from core.models import Recipe, Tag, Ingredient
 
 
 class IngredientSerializer(serializers.ModelSerializer):
-    """Serializer for ingredienst"""
+    """Serializer for ingredients."""
 
     class Meta:
         model = Ingredient
@@ -79,11 +79,11 @@ class RecipeSerializer(serializers.ModelSerializer):
         """Handle getting or creating ingredients as needed."""
         auth_user = self.context['request'].user
         for ingredient in ingredients:
-            ingredient_obj, create = Ingredient.objects.get_or_create(
+            ingredient_obj, created = Ingredient.objects.get_or_create(
                 user=auth_user,
                 **ingredient,
             )
-            recipe.Ingredients.add(ingredient_obj)
+            recipe.ingredients.add(ingredient_obj)
 
 
     def create(self, validated_data):
@@ -118,7 +118,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             self._get_or_create_tags(tags, instance)
 
         if ingredients is not None:
-            instance.Ingredients.clear()
+            instance.ingredients.clear()
             self._get_or_create_ingredients(ingredients, instance)
 
         for attr, value in validate_data.items():

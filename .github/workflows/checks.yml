@@ -1,15 +1,16 @@
 ---
-name: Checks
-# Workflow name visible in GitHub Actions UI
+name: CI
 
-on: [push]
-# Trigger: run workflow on every push
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
 
 jobs:
-  test-lint:
-    name: Test and Lint
+  test:
+    name: Test & Coverage
     runs-on: ubuntu-24.04
-    # Updated Ubuntu runner (old 20.04 removed)
 
     steps:
       - name: Login to Docker Hub
@@ -17,16 +18,82 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        # Logs into Docker Hub to avoid rate limits
 
       - name: Checkout
         uses: actions/checkout@v4
-        # Checks out repo so workflow can access code
 
-      - name: Test
-        run: docker compose run --rm app sh -c "python manage.py wait_for_db && python manage.py test"
-        # Runs Django unit tests inside Docker container
+      - name: Build image
+        run: docker compose build
 
-      - name: Lint
+      - name: Wait for DB and run migrations
+        run: docker compose run --rm app sh -c "python manage.py wait_for_db && python manage.py migrate --noinput"
+
+      - name: Run tests with coverage
+        run: |
+          docker compose run --rm app sh -c "
+            coverage run --source=. --omit='*/migrations/*,manage.py,app/settings.py' \
+              manage.py test &&
+            coverage report --fail-under=80 &&
+            coverage xml -o /app/coverage.xml
+          "
+
+      - name: Copy coverage report from container
+        if: always()
+        run: |
+          docker compose run --rm -v ${{ github.workspace }}:/workspace app sh -c \
+            "cp /app/coverage.xml /workspace/coverage.xml" || true
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: Lint (flake8)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run flake8
         run: docker compose run --rm app sh -c "flake8"
-        # Runs linter to check code style
+
+  security:
+    name: Security Scan (bandit + safety)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run bandit (SAST)
+        run: |
+          docker compose run --rm app sh -c "
+            bandit -r . \
+              --exclude ./migrations,./tests \
+              -ll \
+              --quiet
+          "
+
+      - name: Run safety (dependency audit)
+        run: |
+          docker compose run --rm app sh -c "safety check --full-report" || true
+        # 'true' because safety exits non-zero on any advisory;
+        # treat as informational until pinned versions are confirmed clean

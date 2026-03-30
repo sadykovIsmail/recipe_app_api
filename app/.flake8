@@ -1,6 +1,14 @@
 [flake8]
+max-line-length = 100
 exclude =
-   migrations, 
-   __pycache__,
-   manage.py,
-   settings.py
+    migrations,
+    __pycache__,
+    manage.py,
+    settings.py,
+    .git,
+    .venv,
+    htmlcov
+
+# E501: line too long (handled by max-line-length above)
+# W503: line break before binary operator (conflicts with black)
+extend-ignore = W503

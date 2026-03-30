@@ -1,0 +1,88 @@
+version: '3.9'
+
+# Production docker-compose.
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Required env vars (set on the host or via CI secrets):
+#   SECRET_KEY, DB_NAME, DB_USER, DB_PASS, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS
+#
+# Do NOT mount source code in production — the image is the artefact.
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        DEV: "false"        # no dev packages in the prod image
+    restart: unless-stopped
+    volumes:
+      - prod-static-data:/vol/web    # shared volume for static + media files
+    command: >
+      sh -c "python manage.py wait_for_db &&
+             python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn app.wsgi:application
+               --bind 0.0.0.0:8000
+               --workers 4
+               --threads 2
+               --worker-class gthread
+               --timeout 120
+               --access-logfile -
+               --error-logfile -"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=False
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - CORS_ALLOW_ALL_ORIGINS=False
+      - LOG_LEVEL=INFO
+      - SECURE_SSL_REDIRECT=False   # let the reverse proxy handle TLS
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
+  db:
+    image: postgres:13-alpine
+    restart: unless-stopped
+    volumes:
+      - prod-db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  proxy:
+    image: nginx:1.23-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - prod-static-data:/vol/web:ro   # serve static/media from shared volume
+    depends_on:
+      - app
+    networks:
+      - backend
+
+volumes:
+  prod-db-data:
+  prod-static-data:
+
+networks:
+  backend:
+    driver: bridge

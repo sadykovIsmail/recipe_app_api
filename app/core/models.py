@@ -2,8 +2,10 @@
 Database models.
 This file contains all database models for the project.
 """
+import os
+import uuid
+
 from django.conf import settings
-# Import Django's base model system
 from django.db import models
 
 # Import authentication-related base classes from Django
@@ -71,11 +73,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Determines whether the user can access Django admin
     is_staff = models.BooleanField(default=False)
 
-    # Attach the custom user manager to this model
     objects = UserManager()
-
-    # Field used for authentication instead of username
     USERNAME_FIELD = 'email'
+
+
+def recipe_image_file_path(instance, filename):
+    """Generate a unique file path for a recipe image."""
+    ext = os.path.splitext(filename)[1]
+    filename = f'{uuid.uuid4()}{ext}'
+    return os.path.join('uploads', 'recipe', filename)
+
 
 class Recipe(models.Model):
     """Recipe object."""
@@ -90,6 +97,7 @@ class Recipe(models.Model):
     link = models.CharField(max_length=255, blank=True)
     tags = models.ManyToManyField('Tag')
     ingredients = models.ManyToManyField('Ingredient')
+    image = models.ImageField(null=True, upload_to=recipe_image_file_path)
 
     def __str__(self):
         return self.title

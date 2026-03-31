@@ -1,13 +1,14 @@
 'use client';
 import { useState } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { RecipeCard } from '@/components/recipes/RecipeCard';
-import { Input } from '@/components/ui/Input';
+import { Search } from 'lucide-react';
+import { RecipeCardSocial } from '@/components/social/RecipeCardSocial';
+import { RecipeCardSkeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import { useRecipes, useDeleteRecipe } from '@/lib/hooks/useRecipes';
-import type { Metadata } from 'next';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 export default function RecipesPage() {
+  const { user } = useAuth();
   const [search, setSearch]   = useState('');
   const [page, setPage]       = useState(1);
   const [ordering, setOrdering] = useState('-id');
@@ -59,9 +60,7 @@ export default function RecipesPage() {
       {/* Content */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl h-72 animate-pulse border border-gray-200" />
-          ))}
+          {Array.from({ length: 6 }).map((_, i) => <RecipeCardSkeleton key={i} />)}
         </div>
       ) : !data?.results.length ? (
         <div className="text-center py-20 text-gray-400">
@@ -72,7 +71,14 @@ export default function RecipesPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {data.results.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} onDelete={handleDelete} />
+              <RecipeCardSocial
+                key={recipe.id}
+                recipe={recipe}
+                currentUserId={user?.id}
+                owned
+                onDelete={handleDelete}
+                queryKey={['recipes', { search, page, ordering }]}
+              />
             ))}
           </div>
 

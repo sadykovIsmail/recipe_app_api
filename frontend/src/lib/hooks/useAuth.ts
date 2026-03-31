@@ -36,9 +36,12 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     const refresh = getRefreshToken() ?? '';
-    await authApi.logout(refresh);
-    qc.clear();
-    router.push('/login');
+    try {
+      await authApi.logout(refresh);
+    } finally {
+      qc.clear();
+      router.push('/login');
+    }
   }, [qc, router]);
 
   return {

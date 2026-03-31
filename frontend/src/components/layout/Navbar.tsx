@@ -2,16 +2,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
-import { ChefHat, LogOut, PlusCircle } from 'lucide-react';
+import { ChefHat, LogOut, PlusCircle, User } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
+import { NotificationBell } from '@/components/social/NotificationBell';
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   const links = [
-    { href: '/recipes', label: 'Recipes' },
+    { href: '/recipes',   label: 'My Recipes' },
+    { href: '/feed',      label: 'Feed' },
+    { href: '/discover',  label: 'Discover' },
   ];
 
   return (
@@ -51,10 +54,16 @@ export function Navbar() {
               </Button>
             </Link>
 
+            <NotificationBell />
+
             {user && (
-              <span className="hidden sm:block text-sm text-gray-500">
+              <Link
+                href={`/profile/${user.id}`}
+                className="hidden sm:flex items-center gap-1.5 text-sm text-gray-500 hover:text-brand-600 transition-colors"
+              >
+                <User className="h-4 w-4" />
                 {user.name}
-              </span>
+              </Link>
             )}
 
             <Button

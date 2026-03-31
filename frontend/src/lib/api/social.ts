@@ -12,7 +12,7 @@ export const socialApi = {
   searchUsers: async (q: string, page = 1) => {
     const { data } = await apiClient.get<PaginatedResponse<UserProfile>>(
       `${USER_BASE}/search/`,
-      { params: { q, page } }
+      { params: { search: q || undefined, page } }
     );
     return data;
   },

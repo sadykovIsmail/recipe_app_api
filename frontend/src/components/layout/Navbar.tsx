@@ -15,6 +15,7 @@ export function Navbar() {
     { href: '/recipes',   label: 'My Recipes' },
     { href: '/feed',      label: 'Feed' },
     { href: '/discover',  label: 'Discover' },
+    { href: '/people',    label: 'People' },
   ];
 
   return (

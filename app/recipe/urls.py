@@ -13,6 +13,7 @@ app_name = 'recipe'
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('feed/',     views.FeedView.as_view(),     name='feed'),
-    path('discover/', views.DiscoverView.as_view(),  name='discover'),
+    path('feed/',                          views.FeedView.as_view(),              name='feed'),
+    path('discover/',                      views.DiscoverView.as_view(),           name='discover'),
+    path('recipes/<int:pk>/public/',       views.RecipePublicDetailView.as_view(), name='recipe-public-detail'),
 ]

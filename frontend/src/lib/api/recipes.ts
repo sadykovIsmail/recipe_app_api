@@ -21,7 +21,7 @@ export const recipesApi = {
   },
 
   get: async (id: number) => {
-    const { data } = await apiClient.get<RecipeDetail>(`${BASE}/recipes/${id}/`);
+    const { data } = await apiClient.get<RecipeDetail>(`${BASE}/recipes/${id}/public/`);
     return data;
   },
 

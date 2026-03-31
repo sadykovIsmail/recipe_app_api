@@ -188,6 +188,24 @@ class DiscoverView(generics.ListAPIView):
         return qs.distinct()
 
 
+# ── Public recipe detail ──────────────────────────────────────────────────────
+
+class RecipePublicDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/v1/recipe/recipes/<pk>/public/
+
+    Returns any recipe by ID regardless of owner.
+    Includes social fields: likes_count, comments_count, is_liked, author.
+    """
+    serializer_class = serializers.RecipeDetailSerializer
+    authentication_classes = AUTH
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        qs = _annotate_recipe_qs(Recipe.objects.filter(pk=self.kwargs['pk']))
+        return generics.get_object_or_404(qs)
+
+
 # ── Tag / Ingredient ViewSets ─────────────────────────────────────────────────
 
 @extend_schema_view(

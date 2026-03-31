@@ -5,18 +5,26 @@ import Link from 'next/link';
 import { ArrowLeft, Clock, DollarSign, ExternalLink, Pencil, Trash2, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/ui/Avatar';
+import { LikeButton } from '@/components/social/LikeButton';
+import { CommentThread } from '@/components/social/CommentThread';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useRecipe, useDeleteRecipe, useUploadImage } from '@/lib/hooks/useRecipes';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { useRef, ChangeEvent } from 'react';
 
 export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const recipeId = Number(id);
 
   const { data: recipe, isLoading } = useRecipe(recipeId);
-  const deleteMutation  = useDeleteRecipe();
-  const uploadMutation  = useUploadImage(recipeId);
-  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const deleteMutation = useDeleteRecipe();
+  const uploadMutation = useUploadImage(recipeId);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
+
+  const isOwner = user?.id === recipe?.author?.id;
 
   const handleDelete = async () => {
     if (!confirm('Delete this recipe?')) return;
@@ -30,10 +38,11 @@ export default function RecipeDetailPage() {
   };
 
   if (isLoading) return (
-    <div className="max-w-3xl mx-auto animate-pulse space-y-4">
-      <div className="h-8 bg-gray-200 rounded w-1/2" />
-      <div className="h-64 bg-gray-200 rounded-2xl" />
-      <div className="h-4 bg-gray-200 rounded w-3/4" />
+    <div className="max-w-3xl mx-auto space-y-4">
+      <Skeleton className="h-8 w-1/2" />
+      <Skeleton className="h-72 rounded-2xl" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
     </div>
   );
 
@@ -48,23 +57,30 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Back + actions */}
+      {/* Back + owner actions */}
       <div className="flex items-center justify-between mb-6">
-        <Link href="/recipes" className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 text-sm">
-          <ArrowLeft className="h-4 w-4" /> All recipes
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link href={`/recipes/${id}/edit`}>
-            <Button variant="secondary" size="sm"><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
-          </Link>
-          <Button variant="danger" size="sm" loading={deleteMutation.isPending} onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 mr-1" /> Delete
-          </Button>
-        </div>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 text-sm"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+        {isOwner && (
+          <div className="flex items-center gap-2">
+            <Link href={`/recipes/${id}/edit`}>
+              <Button variant="secondary" size="sm">
+                <Pencil className="h-4 w-4 mr-1" /> Edit
+              </Button>
+            </Link>
+            <Button variant="danger" size="sm" loading={deleteMutation.isPending} onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Image */}
-      <div className="relative h-72 bg-gray-100 rounded-2xl overflow-hidden mb-6 group">
+      <div className={`relative h-72 bg-gray-100 rounded-2xl overflow-hidden mb-6 ${isOwner ? 'group' : ''}`}>
         {recipe.image ? (
           <Image src={recipe.image} alt={recipe.title} fill className="object-cover" sizes="768px" />
         ) : (
@@ -75,25 +91,39 @@ export default function RecipeDetailPage() {
             </svg>
           </div>
         )}
-        {/* Upload overlay */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-all"
-        >
-          <span className="opacity-0 group-hover:opacity-100 text-white flex items-center gap-2 font-medium transition-opacity">
-            <Upload className="h-5 w-5" />
-            {uploadMutation.isPending ? 'Uploading…' : 'Change photo'}
-          </span>
-        </button>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+        {isOwner && (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-all"
+            >
+              <span className="opacity-0 group-hover:opacity-100 text-white flex items-center gap-2 font-medium transition-opacity">
+                <Upload className="h-5 w-5" />
+                {uploadMutation.isPending ? 'Uploading…' : 'Change photo'}
+              </span>
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          </>
+        )}
       </div>
 
-      {/* Title + meta */}
+      {/* Author */}
+      {recipe.author && (
+        <Link href={`/profile/${recipe.author.id}`} className="flex items-center gap-2.5 mb-4 group w-fit">
+          <Avatar src={recipe.author.avatar} name={recipe.author.name} size="sm" />
+          <span className="text-sm text-gray-500 group-hover:text-brand-600 transition-colors">
+            {recipe.author.name}
+          </span>
+        </Link>
+      )}
+
+      {/* Title */}
       <h1 className="text-3xl font-bold text-gray-900">{recipe.title}</h1>
 
+      {/* Meta */}
       <div className="flex items-center gap-6 mt-3 text-gray-500">
         <span className="flex items-center gap-1.5 text-sm">
-          <Clock className="h-4 w-4" /> {recipe.time_minutes} minutes
+          <Clock className="h-4 w-4" /> {recipe.time_minutes} min
         </span>
         <span className="flex items-center gap-1.5 text-sm">
           <DollarSign className="h-4 w-4" /> ${recipe.price}
@@ -104,6 +134,15 @@ export default function RecipeDetailPage() {
             <ExternalLink className="h-4 w-4" /> Source
           </a>
         )}
+        {/* Like button */}
+        <div className="ml-auto">
+          <LikeButton
+            recipeId={recipe.id}
+            isLiked={recipe.is_liked}
+            likesCount={recipe.likes_count}
+            queryKey={['recipe', recipeId]}
+          />
+        </div>
       </div>
 
       {/* Description */}
@@ -135,6 +174,15 @@ export default function RecipeDetailPage() {
           </ul>
         </div>
       )}
+
+      {/* Comments */}
+      <div className="mt-8 pt-6 border-t border-gray-100">
+        <CommentThread
+          recipeId={recipe.id}
+          currentUserId={user?.id}
+          recipeOwnerId={recipe.author?.id}
+        />
+      </div>
     </div>
   );
 }

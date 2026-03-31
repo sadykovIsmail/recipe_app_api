@@ -1,5 +1,5 @@
 'use client';
-import { use, useState } from 'react';
+import { useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useRef, useCallback } from 'react';
 import { MapPin, Link as LinkIcon, Users } from 'lucide-react';
@@ -14,8 +14,8 @@ import { UserCard } from '@/components/social/UserCard';
 
 type Tab = 'recipes' | 'followers' | 'following';
 
-export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ProfilePage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const userId = parseInt(id, 10);
   const { user: me } = useAuth();
   const [tab, setTab] = useState<Tab>('recipes');
